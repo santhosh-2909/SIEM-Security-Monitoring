@@ -49,7 +49,8 @@ def api_reports():
     return jsonify(data["report"])
 
 if __name__ == '__main__':
-    print("--- SOC SENTINEL BACKEND ---")
-    print("API Layer: http://localhost:5000/api/threats")
-    print("UI Layer:  http://localhost:5000/")
-    app.run(debug=True, port=5000)
+    import os
+    print("--- SOC SENTINEL CLOUD READY ---")
+    # Respect Render's dynamic port assignment
+    port = int(os.environ.get("PORT", 5000))
+    app.run(debug=False, host='0.0.0.0', port=port)
