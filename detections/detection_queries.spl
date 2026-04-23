@@ -1,0 +1,33 @@
+### Use Case 1: Brute Force Detection
+# Logic: 5+ failed attempts from the same IP within 5 minutes.
+# Trigger: High Priority Alert
+
+index=security_logs (EventCode=4625 OR sourcetype=linux_secure "Failed password")
+| stats count as failure_count values(user) as attempted_users min(_time) as first_attempt max(_time) as last_attempt by src_ip
+| where failure_count >= 5
+| eval duration = last_attempt - first_attempt
+| where duration <= 300
+| eval alert_severity="High", alert_type="Brute Force Attack"
+| table _time, src_ip, attempted_users, failure_count, alert_severity, alert_type
+
+---
+
+### Use Case 2: Unusual Login Time
+# Logic: Successful login outside 9 AM - 6 PM window.
+
+index=security_logs (EventCode=4624 OR "Accepted password")
+| eval hour = strftime(_time, "%H")
+| where hour < 9 OR hour > 18
+| eval alert_severity="Medium", alert_type="After-Hours Login"
+| table _time, user, src_ip, hour, alert_severity, alert_type
+
+---
+
+### Use Case 3: First Time Login from New IP
+# Logic: Detect if a user logs in from an IP they haven't used in 30 days.
+
+index=security_logs (EventCode=4624 OR "Accepted password")
+| stats earliest(_time) as first_login by user, src_ip
+| eventstats earliest(first_login) as user_known_first_login by user
+| where first_login > user_known_first_login
+| eval alert_severity="Low", alert_type="New Source IP Detected"

@@ -1,0 +1,5 @@
+ip,is_malicious,threat_score,country,last_reported
+45.33.22.11,true,95,China,2024-03-20
+185.122.3.4,true,88,Russia,2024-03-21
+10.0.0.5,false,0,Internal,N/A
+192.168.1.100,false,0,Internal,N/A

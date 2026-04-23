@@ -1,0 +1,61 @@
+<dashboard version="1.1" theme="dark">
+  <label>SOC Analyst Overview - Threat Monitoring</label>
+  <description>Real-world simulation dashboard for Brute Force and Unusual Login monitoring.</description>
+  <row>
+    <panel>
+      <single>
+        <title>Total Security Events (24h)</title>
+        <search>
+          <query>index=security_logs | stats count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="drilldown">none</option>
+        <option name="rangeColors">["0x53a051","0x0877a6","0xf8be34","0xf1813f","0xdc4e41"]</option>
+        <option name="rangeValues">[0,30,70,100]</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Active Brute Force Alerts</title>
+        <search>
+          <query>index=security_logs (EventCode=4625 OR "Failed password") | stats count by src_ip | where count &gt; 5 | count</query>
+          <earliest>-60m@m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0xdc4e41"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Failed login Trend by IP</title>
+        <search>
+          <query>index=security_logs (EventCode=4625 OR "Failed password") | timechart count by src_ip</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.chart">area</option>
+        <option name="charting.drilldown">none</option>
+      </chart>
+    </panel>
+    <panel>
+      <table>
+        <title>Recent Alerts (High &amp; Medium Severity)</title>
+        <search>
+          <query>index=security_logs | eval severity=case(EventCode=4625, "High", EventCode=4624, "Low", 1=1, "Medium") | table _time, src_ip, user, severity | sort -_time</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+</dashboard>

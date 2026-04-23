@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOC SENTINEL | SIEM COMMAND CENTER</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #0d1117; --bg-card: #161b22; --bg-sidebar: #010409;
+            --accent-green: #2ea043; --accent-blue: #58a6ff; --accent-red: #f85149;
+            --accent-orange: #d29922; --text-main: #c9d1d9; --text-dim: #8b949e;
+            --border: #30363d; --sidebar-width: 260px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: var(--bg-deep); color: var(--text-main); font-family: 'Inter', sans-serif; display: flex; height: 100vh; overflow: hidden; }
+
+        aside { width: var(--sidebar-width); background: var(--bg-sidebar); border-right: 1px solid var(--border); padding: 1.5rem; display: flex; flex-direction: column; }
+        .logo-area { display: flex; align-items: center; gap: 12px; margin-bottom: 3rem; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 0.8rem 1rem; border-radius: 8px; color: var(--text-dim); text-decoration: none; cursor: pointer; margin-bottom: 0.5rem; font-size: 0.95rem; }
+        .nav-item:hover, .nav-item.active { background: rgba(255, 255, 255, 0.05); color: #f0f6fc; }
+        .nav-item.active { border-left: 3px solid var(--accent-blue); padding-left: calc(1rem - 3px); }
+
+        main { flex-grow: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        header { height: 70px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 2rem; background: rgba(13, 17, 23, 0.8); backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 50; }
+        .status-pill { display: flex; align-items: center; gap: 8px; padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid; }
+        .status-pill.secure { color: var(--accent-green); background: rgba(46, 160, 67, 0.1); border-color: rgba(46, 160, 67, 0.3); }
+        .status-pill.alert { color: var(--accent-red); background: rgba(248, 81, 73, 0.1); border-color: rgba(248, 81, 73, 0.3); }
+
+        .content-wrap { padding: 2rem; display: none; }
+        .content-wrap.active { display: block; animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .summary-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1.5rem; margin-bottom: 1.5rem; }
+        .stat-card { background: var(--bg-card); border: 1px solid var(--border); padding: 1.2rem; border-radius: 12px; }
+        .stat-card h3 { font-size: 0.7rem; color: var(--text-dim); margin-bottom: 5px; text-transform: uppercase; }
+        .stat-card .val { font-size: 1.4rem; font-weight: 700; color: #f0f6fc; }
+
+        .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        
+        .filter-bar { display: flex; gap: 10px; margin-bottom: 1rem; }
+        .search-input { background: #0d1117; border: 1px solid var(--border); color: white; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; flex-grow: 1; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { text-align: left; padding: 0.75rem 1rem; color: var(--text-dim); border-bottom: 1px solid var(--border); }
+        td { padding: 0.8rem 1rem; border-bottom: 1px solid #1c2128; cursor: pointer; }
+        tr:hover { background: rgba(255, 255, 255, 0.02); }
+
+        .severity-badge { padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+        .sev-high { color: #ff7b72; border: 1px solid rgba(248, 81, 73, 0.3); background: rgba(248, 81, 73, 0.1); }
+        .sev-medium { color: #d29922; border: 1px solid rgba(210, 153, 34, 0.3); background: rgba(210, 153, 34, 0.1); }
+        .sev-low { color: #7ee787; border: 1px solid rgba(46, 160, 67, 0.3); background: rgba(46, 160, 67, 0.1); }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
+        .modal { background: var(--bg-card); width: 600px; border-radius: 12px; border: 1px solid var(--border); padding: 2rem; }
+        .btn-blue { background: var(--accent-blue); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+    </style>
+</head>
+<body>
+    <aside>
+        <div class="logo-area"><i data-lucide="shield-check" color="#58a6ff" size="24"></i><h1>SOC SENTINEL</h1></div>
+        <nav>
+            <div data-tab="dashboard" class="nav-item active"><i data-lucide="layout-dashboard" size="18"></i> Dashboard</div>
+            <div data-tab="alerts" class="nav-item"><i data-lucide="alert-triangle" size="18"></i> Threats</div>
+            <div data-tab="logs" class="nav-item"><i data-lucide="file-text" size="18"></i> Security Logs</div>
+            <div data-tab="assets" class="nav-item"><i data-lucide="server" size="18"></i> Asset Inventory</div>
+            <div data-tab="reports" class="nav-item"><i data-lucide="bar-chart-2" size="18"></i> Reports</div>
+            <div data-tab="settings" class="nav-item"><i data-lucide="settings" size="18"></i> Settings</div>
+        </nav>
+    </aside>
+
+    <main>
+        <header>
+            <div id="globalStatus" class="status-pill secure"><i data-lucide="lock" size="14"></i> ALL SYSTEMS SECURE</div>
+            <div style="text-align: right;"><p id="currTime" style="color:#f0f6fc; font-weight:600; font-size:0.9rem;">--:--:--</p></div>
+        </header>
+
+        <!-- DASHBOARD -->
+        <section id="tab-dashboard" class="content-wrap active">
+            <div class="summary-grid">
+                 <div class="stat-card"><h3>Events</h3><div class="val" id="stat-total">0</div></div>
+                 <div class="stat-card"><h3>Threats</h3><div class="val" id="stat-threats" style="color:var(--accent-red)">0</div></div>
+                 <div class="stat-card"><h3>Unique IPs</h3><div class="val" id="stat-ips">0</div></div>
+                 <div class="stat-card"><h3>Health</h3><div class="val" id="stat-health" style="color:var(--accent-green)">--</div></div>
+                 <div class="stat-card"><h3>Status</h3><div class="val" style="font-size: 0.8rem; color:var(--text-dim);">MONITORING</div></div>
+            </div>
+            <div class="card" style="height: 250px;"><canvas id="trendChart"></canvas></div>
+            <div class="dashboard-main">
+                <div class="left-col">
+                    <div class="card">
+                        <div class="card-header"><h2><i data-lucide="terminal" size="18"></i> Live Security Event Feed</h2></div>
+                        <div style="max-height: 400px; overflow-y: auto;">
+                            <table id="table-dashboard"><thead><tr><th>TIME</th><th>IP</th><th>USER</th><th>RISK</th></tr></thead><tbody></tbody></table>
+                        </div>
+                    </div>
+                </div>
+                <div class="right-col">
+                    <div class="card">
+                        <div class="card-header"><h2><i data-lucide="zap" size="18"></i> Quick Actions</h2></div>
+                        <div style="display:grid; grid-template-columns: 1fr; gap:10px;">
+                            <button class="btn-blue" onclick="window.location.reload()"><i data-lucide="refresh-cw" size="14"></i> Force System Scan</button>
+                            <button class="btn-blue" style="background:var(--accent-orange)" onclick="switchTab('reports')"><i data-lucide="file-text" size="14"></i> Generate Full Report</button>
+                            <button class="btn-blue" style="background:var(--border)" onclick="switchTab('settings')"><i data-lucide="plus" size="14"></i> Add New Log Source</button>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><h2><i data-lucide="shield" size="18"></i> System Integrity</h2></div>
+                        <div style="font-size:0.8rem; line-height:2;">
+                            <p>● Firewall: <span style="color:var(--accent-green)">FILTERING</span></p>
+                            <p>● IDS/IPS: <span style="color:var(--accent-green)">ACTIVE</span></p>
+                            <p>● Threat Intel: <span style="color:var(--accent-green)">SYNCED</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ALERTS -->
+        <section id="tab-alerts" class="content-wrap">
+            <div class="card">
+                <div class="card-header"><h2>Security Threats</h2><button class="btn-blue" onclick="exportData('alerts')"><i data-lucide="download" size="14"></i> EXPORT CSV</button></div>
+                <div class="filter-bar">
+                    <input type="text" class="search-input" id="search-alerts" placeholder="Search by IP or User...">
+                    <select id="filter-severity" class="search-input" style="width:150px;">
+                        <option value="">All Severities</option><option value="High">High</option><option value="Medium">Medium</option>
+                    </select>
+                </div>
+                <table id="table-alerts"><thead><tr><th>TIME</th><th>IP</th><th>USER</th><th>SEVERITY</th></tr></thead><tbody></tbody></table>
+            </div>
+        </section>
+
+        <!-- LOGS -->
+        <section id="tab-logs" class="content-wrap">
+            <div class="card">
+                <div class="card-header"><h2>Event Logs</h2><button class="btn-blue" onclick="exportData('logs')"><i data-lucide="download" size="14"></i> EXPORT CSV</button></div>
+                <div class="filter-bar"><input type="text" class="search-input" id="search-logs" placeholder="Filter raw logs..."></div>
+                <table id="table-logs"><thead><tr><th>TIME</th><th>IP</th><th>USER</th><th>EVENT</th><th>STATUS</th></tr></thead><tbody></tbody></table>
+            </div>
+        </section>
+
+        <!-- ASSETS -->
+        <section id="tab-assets" class="content-wrap">
+            <div class="card">
+                <div class="card-header"><h2>Asset Inventory</h2></div>
+                <table id="table-assets"><thead><tr><th>HOSTNAME</th><th>STATUS</th><th>LAST SEEN</th><th>RISK</th></tr></thead><tbody></tbody></table>
+            </div>
+        </section>
+
+        <!-- REPORTS -->
+        <section id="tab-reports" class="content-wrap">
+            <div class="card">
+                 <div class="card-header"><h2>Security Summary</h2><button class="btn-blue" onclick="exportData('report')">EXPORT CSV</button></div>
+                 <div id="report-body" style="padding: 1rem; border: 1px solid var(--border); border-radius: 8px;"></div>
+            </div>
+        </section>
+
+        <!-- SETTINGS -->
+        <section id="tab-settings" class="content-wrap">
+            <div class="card">
+                <h2>Configuration</h2>
+                <div style="margin-top:1rem; display:grid; gap:15px; max-width:400px;">
+                    <div><label>Refresh Interval (ms)</label><input type="number" id="set-refresh" class="search-input" value="10000"></div>
+                    <button class="btn-blue" onclick="saveSettings()">SAVE SETTINGS</button>
+                    <p id="save-msg" style="color:var(--accent-green); font-size:0.75rem; display:none;">Settings saved to local storage.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="modal-overlay" id="alertModalOverlay">
+        <div class="modal">
+            <div class="card-header"><h2 id="modalTitle">Alert Details</h2><i data-lucide="x" class="icon-btn" onclick="closeModal()" style="cursor:pointer;"></i></div>
+            <div id="modalContent" style="margin-top:1rem; line-height:1.6;"></div>
+            <div id="remediationArea" style="margin-top:1.5rem; padding:1rem; background:rgba(46,160,67,0.05); border:1px solid var(--accent-green); border-radius:8px;">
+                <h4 style="color:var(--accent-green); margin-bottom:8px;">Recommended Action</h4>
+                <ul id="remediationList" style="padding-left:20px; font-size:0.85rem;"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        let currentTab = 'dashboard';
+        let refreshInterval = localStorage.getItem('siem-refresh') || 10000;
+        let dataStore = {};
+        let trendChart;
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            const activeNav = document.querySelector(`.nav-item[data-tab="${tabId}"]`);
+            if(activeNav) activeNav.classList.add('active');
+            
+            document.querySelectorAll('.content-wrap').forEach(w => w.classList.remove('active'));
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            currentTab = tabId;
+            fetchData();
+        }
+
+        document.querySelectorAll('.nav-item').forEach(btn => {
+            btn.onclick = () => switchTab(btn.dataset.tab);
+        });
+
+        async function fetchData() {
+            let tab = currentTab;
+            let endpoint = `/api/${tab === 'reports' ? 'reports' : (tab === 'threats' ? 'alerts' : tab)}`;
+            if(tab === 'alerts') endpoint = '/api/alerts'; 
+
+            try {
+                const res = await fetch(endpoint);
+                const data = await res.json();
+                dataStore[tab] = data;
+                render(tab, data);
+            } catch (e) {
+                console.error("Fetch Error:", e);
+            }
+        }
+
+        function render(tab, data) {
+            const getTbody = (id) => document.querySelector(`#${id} tbody`);
+            const tableIdMap = { 'dashboard': 'table-dashboard', 'alerts': 'table-alerts', 'logs': 'table-logs', 'assets': 'table-assets' };
+
+            if(tab === 'reports') {
+                document.getElementById('report-body').innerHTML = `
+                    <h3>Cyber Security Posture</h3><p>Total Events: ${data.summary.total_events}</p>
+                    <p>Threats: ${data.summary.threats_detected}</p>
+                    <h4 style="margin-top:1rem;">Top Attackers:</h4>
+                    ${data.top_attackers.map(a => `<p>• ${a.ip} (${a.count} attempts)</p>`).join('')}
+                `;
+                return;
+            }
+
+            const tbody = getTbody(tableIdMap[tab]);
+            if(!tbody) return;
+            tbody.innerHTML = '';
+
+            const list = tab === 'dashboard' ? data.top_threats : data;
+            if(!list || list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-dim);">No active data in this segment.</td></tr>`;
+                return;
+            }
+
+            list.forEach(item => {
+                let row = '';
+                if(tab === 'logs') row = `<tr><td>${item.time}</td><td>${item.ip}</td><td>${item.user}</td><td>${item.description}</td><td>${item.status}</td></tr>`;
+                else if(tab === 'assets') row = `<tr><td><code>${item.hostname}</code></td><td>${item.status}</td><td>${item.last_activity}</td><td><span class="severity-badge sev-${item.risk.toLowerCase()}">${item.risk}</span></td></tr>`;
+                else row = `<tr onclick="viewAlert(${item.id})"><td>${item.time}</td><td>${item.ip}</td><td>${item.user}</td><td><span class="severity-badge sev-${item.severity.toLowerCase()}">${item.severity}</span></td></tr>`;
+                tbody.innerHTML += row;
+            });
+
+            if(tab === 'dashboard') {
+                document.getElementById('stat-total').innerText = data.stats.total;
+                document.getElementById('stat-threats').innerText = data.stats.failed;
+                document.getElementById('stat-ips').innerText = data.stats.unique_ips;
+                document.getElementById('stat-health').innerText = data.stats.health;
+                updateChart(data.trends);
+                updateGlobalStatus(data.stats.failed);
+            }
+        }
+
+        async function viewAlert(id) {
+            const res = await fetch(`/api/alerts/${id}`);
+            const d = await res.json();
+            document.getElementById('modalTitle').innerText = `${d.severity} Alert: ${d.ip}`;
+            document.getElementById('modalContent').innerHTML = `<p>User: ${d.user}</p><p>Time: ${d.time}</p><p>Intelligence: ${d.threat_intel.origin}</p>`;
+            document.getElementById('remediationList').innerHTML = d.remediation.map(r => `<li>${r}</li>`).join('');
+            document.getElementById('alertModalOverlay').style.display = 'flex';
+            lucide.createIcons();
+        }
+
+        function closeModal() { document.getElementById('alertModalOverlay').style.display = 'none'; }
+
+        function updateChart(points) {
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            if (trendChart) { trendChart.data.datasets[0].data = points; trendChart.update(); return; }
+            trendChart = new Chart(ctx, {
+                type: 'line', data: { labels: ['-50m', '-40m', '-30m', '-20m', '-10m', 'Now'], datasets: [{ label: 'Failed Logins', data: points, borderColor: '#58a6ff', tension: 0.4, fill: true, backgroundColor: 'rgba(88, 166, 255, 0.05)' }]},
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { display:false }, x: { grid: { color: '#30363d' }, ticks: { color: '#8b949e', font: { size: 10 } } } } }
+            });
+        }
+
+        function updateGlobalStatus(fails) {
+            const p = document.getElementById('globalStatus');
+            if (fails > 0) { p.className = 'status-pill alert'; p.innerHTML = '<i data-lucide="shield-alert" size="14"></i> THREAT DETECTED'; }
+            else { p.className = 'status-pill secure'; p.innerHTML = '<i data-lucide="lock" size="14"></i> SECURE'; }
+            lucide.createIcons();
+        }
+
+        function exportData(type) {
+            const data = dataStore[type] || [];
+            if (data.length === 0) return alert("No data");
+            const csv = type === 'reports' ? "Summary\n" + JSON.stringify(data) : data.map(r => Object.values(r).join(",")).join("\n");
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `siem_${type}.csv`; link.click();
+        }
+
+        function saveSettings() { localStorage.setItem('siem-refresh', document.getElementById('set-refresh').value); location.reload(); }
+        function updateClock() { document.getElementById('currTime').innerText = new Date().toLocaleTimeString(); }
+        setInterval(updateClock, 1000);
+        setInterval(fetchData, refreshInterval);
+        fetchData();
+    </script>
+</body>
+</html>
