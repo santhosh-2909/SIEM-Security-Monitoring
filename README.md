@@ -1,8 +1,8 @@
-# 🛡️ SIEM Threat Detection & Alerting System
+# SIEM Threat Detection & Alerting System
 
 This repository contains a complete, implementation-ready SOC project designed for recruiters and technical interviews. It simulates a Splunk-based SIEM environment focused on authentication security.
 
-## 🚀 Overview
+## Overview
 - **Objective:** Detect Brute-Force attacks and Unusual Login patterns.
 - **SIEM Platform:** Splunk (Logic can be ported to ELK/KQL).
 - **Log Sources:** Windows Security Event Logs (4625/4624) and Linux `/var/log/auth.log`.
@@ -10,7 +10,7 @@ This repository contains a complete, implementation-ready SOC project designed f
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 - `backend/`: Core API and Log Processing logic (`main.py`, `log_processor.py`).
 - `frontend/`: UI templates and static assets.
 - `splunk_configs/`: Ingestion settings (`inputs.conf`, `props.conf`, lookup CSV).
@@ -21,7 +21,7 @@ This repository contains a complete, implementation-ready SOC project designed f
 
 ---
 
-## 🛠️ Step-by-Step Setup Guide
+## Step-by-Step Setup Guide
 
 ### 1. Ingesting Data
 To simulate this in a local Splunk instance:
@@ -51,16 +51,16 @@ Navigate to **Search & Reporting** in Splunk and paste the queries found in `det
 
 ---
 
-## 📊 Key Detection Logic
+##  Key Detection Logic
 | Use Case | Threshold | Severity |
 | :--- | :--- | :--- |
-| **Brute Force** | >= 5 fails / 5 mins | 🔥 High |
+| **Brute Force** | >= 5 fails / 5 mins |  High |
 | **After-Hours** | 6 PM - 9 AM | ⚠️ Medium |
-| **Threat Intel Match** | List of known malicious IPs | ☢️ Critical |
+| **Threat Intel Match** | List of known malicious IPs | Critical |
 
 ---
 
-## 👔 Recruiter Demo Package
+## Recruiter Demo Package
 If presenting this for a job:
 1. **Show the Dashboard:** Demonstrate the "Failed Login Trend" and "Active Alerts" panels.
 2. **Explain the SPL:** Focus on how you used `eval` and `where` to filter noise.
